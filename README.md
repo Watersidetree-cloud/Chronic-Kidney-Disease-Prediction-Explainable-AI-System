@@ -216,26 +216,6 @@ This indicates the model learned clinically meaningful prediction patterns from 
 
 ---
 
-# Installation
-
-```bash
-pip install pandas numpy matplotlib seaborn scikit-learn xgboost shap mlflow imbalanced-learn
-```
-
----
-
-# Running the Project
-
-```bash
-# Clone repository
-git clone https://github.com/Watersidetree-cloud/project-name.git
-
-# Open notebook in Databricks or Jupyter
-
-# Run model pipeline
-```
-
----
 
 # Future Improvements
 

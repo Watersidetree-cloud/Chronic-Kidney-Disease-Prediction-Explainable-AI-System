@@ -1,0 +1,507 @@
+import pandas as pd 
+import numpy as np 
+import matplotlib.pyplot as plt
+import seaborn as sns
+from imblearn.under_sampling import RandomUnderSampler
+from sklearn.pipeline import Pipeline 
+from sklearn.preprocessing import StandardScaler, OrdinalEncoder, OneHotEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.model_selection import train_test_split 
+from sklearn.compose import ColumnTransformer 
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
+from sklearn.metrics import (accuracy_score, 
+                             confusion_matrix, 
+                             classification_report, 
+                             roc_curve, 
+                             roc_auc_score,  
+                             f1_score)
+import warnings
+warnings.filterwarnings('ignore')
+import mlflow
+import mlflow.sklearn
+imdata = spark.table("kidney_database.kidney_dsease_data").toPandas()
+data.head()port shap
+
+
+df = data.copy()
+
+df.columns = df.columns.str.lower()
+
+
+<class 'pandas.core.frame.DataFrame'>
+RangeIndex: 1659 entries, 0 to 1658
+Data columns (total 54 columns):
+ #   Column                         Non-Null Count  Dtype  
+---  ------                         --------------  -----  
+ 0   patientid                      1659 non-null   int64  
+ 1   age                            1659 non-null   int64  
+ 2   gender                         1659 non-null   int64  
+ 3   ethnicity                      1659 non-null   int64  
+ 4   socioeconomicstatus            1659 non-null   int64  
+ 5   educationlevel                 1659 non-null   int64  
+ 6   bmi                            1659 non-null   float64
+ 7   smoking                        1659 non-null   int64  
+ 8   alcoholconsumption             1659 non-null   float64
+ 9   physicalactivity               1659 non-null   float64
+ 10  dietquality                    1659 non-null   float64
+ 11  sleepquality                   1659 non-null   float64
+ 12  familyhistorykidneydisease     1659 non-null   int64  
+ 13  familyhistoryhypertension      1659 non-null   int64  
+ 14  familyhistorydiabetes          1659 non-null   int64  
+ 15  previousacutekidneyinjury      1659 non-null   int64  
+ 16  urinarytractinfections         1659 non-null   int64  
+ 17  systolicbp                     1659 non-null   int64  
+ 18  diastolicbp                    1659 non-null   int64  
+ 19  fastingbloodsugar              1659 non-null   float64
+ 20  hba1c                          1659 non-null   float64
+ 21  serumcreatinine                1659 non-null   float64
+ 22  bunlevels                      1659 non-null   float64
+ 23  gfr                            1659 non-null   float64
+ 24  proteininurine                 1659 non-null   float64
+ 25  acr                            1659 non-null   float64
+ 26  serumelectrolytessodium        1659 non-null   float64
+ 27  serumelectrolytespotassium     1659 non-null   float64
+ 28  serumelectrolytescalcium       1659 non-null   float64
+ 29  serumelectrolytesphosphorus    1659 non-null   float64
+ 30  hemoglobinlevels               1659 non-null   float64
+ 31  cholesteroltotal               1659 non-null   float64
+ 32  cholesterolldl                 1659 non-null   float64
+ 33  cholesterolhdl                 1659 non-null   float64
+ 34  cholesteroltriglycerides       1659 non-null   float64
+ 35  aceinhibitors                  1659 non-null   int64  
+ 36  diuretics                      1659 non-null   int64  
+ 37  nsaidsuse                      1659 non-null   float64
+ 38  statins                        1659 non-null   int64  
+ 39  antidiabeticmedications        1659 non-null   int64  
+ 40  edema                          1659 non-null   int64  
+ 41  fatiguelevels                  1659 non-null   float64
+ 42  nauseavomiting                 1659 non-null   float64
+ 43  musclecramps                   1659 non-null   float64
+ 44  itching                        1659 non-null   float64
+ 45  qualityoflifescore             1659 non-null   float64
+ 46  heavymetalsexposure            1659 non-null   int64  
+ 47  occupationalexposurechemicals  1659 non-null   int64  
+ 48  waterquality                   1659 non-null   int64  
+ 49  medicalcheckupsfrequency       1659 non-null   float64
+ 50  medicationadherence            1659 non-null   float64
+ 51  healthliteracy                 1659 non-null   float64
+ 52  diagnosis                      1659 non-null   int64  
+ 53  doctorincharge                 1659 non-null   object 
+dtypes: float64(30), int64(23), object(1)
+memory usage: 700.0+ KB
+
+
+df.duplicated().any()
+
+df.describe().T
+
+
+df.select_dtypes(include=['number']).corr()
+
+x = df.drop(['diagnosis','patientid'], axis = 1)
+y = df.diagnosis
+
+
+resampled_x, resampled_y = RandomUnderSampler().fit_resample(x, y)
+
+resampled_y.value_counts()
+
+
+x_train, x_test, y_train, y_test = train_test_split(resampled_x, resampled_y, test_size=0.2, random_state=42)
+x_train.shape, x_test.shape
+
+
+def process_data(dat):
+    dat = dat.copy()
+
+    num_cols = dat.select_dtypes(include=['number']).columns
+    cat_cols = dat.select_dtypes(include=['object']).columns
+
+    num_pipe = Pipeline([
+        ('imputer', SimpleImputer(strategy='median')),
+        ('scaler', StandardScaler())
+    ])
+
+    cat_pipe = Pipeline([
+        ('imputer', SimpleImputer(strategy='most_frequent')),
+        ('encoder', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value = -1))
+    ])
+
+    preprocessor = ColumnTransformer([
+        ('num', num_pipe, num_cols),
+        ('cat', cat_pipe, cat_cols)
+    ],
+    remainder = 'drop'
+    )
+    return preprocessor
+
+
+processor = process_data(x)
+
+
+
+lr_pipe = Pipeline([
+    ('transformer', processor),
+    ('lr_model', LogisticRegression())
+])
+
+lr_pipe.fit(x_train, y_train)
+
+
+
+
+lr_predict = lr_pipe.predict(x_test)
+
+print("Classification Report")
+print(classification_report(y_test, lr_predict))
+print()
+print(f"F1_Score : {f1_score(y_test, lr_predict)}")
+
+
+
+Classification Report
+              precision    recall  f1-score   support
+
+           0       0.58      0.54      0.56        28
+           1       0.54      0.58      0.56        26
+
+    accuracy                           0.56        54
+   macro avg       0.56      0.56      0.56        54
+weighted avg       0.56      0.56      0.56        54
+
+
+F1_Score : 0.5555555555555556
+20 hours ago (11s)
+
+
+
+
+mlflow.sklearn.autolog()
+
+with mlflow.start_run(run_name="Kidney_Diseade_Logistic_Regression_Model"):
+
+    # Create pipeline
+    lr_pipe = Pipeline([
+        ('transformer', processor),
+        ('lr_model', LogisticRegression())
+    ])
+
+    # Train model
+    lr_pipe.fit(x_train, y_train)
+
+    # Predictions
+    lr_predict = lr_pipe.predict(x_test)
+
+    # Metrics
+    f1 = f1_score(y_test, lr_predict)
+
+    print("Classification Report")
+    print(classification_report(y_test, lr_predict))
+    print()
+    print(f"F1 Score : {f1}")
+
+    # Manual logging 
+    mlflow.log_metric("f1_score", f1)
+
+    # Log model manually
+    mlflow.sklearn.log_model(
+        sk_model=lr_pipe,
+        artifact_path="logistic_regression_pipeline"
+    )
+
+
+
+Classification Report
+              precision    recall  f1-score   support
+
+           0       0.58      0.54      0.56        28
+           1       0.54      0.58      0.56        26
+
+    accuracy                           0.56        54
+   macro avg       0.56      0.56      0.56        54
+weighted avg       0.56      0.56      0.56        54
+
+
+F1 Score : 0.5555555555555556
+
+
+
+mlflow.sklearn.autolog()
+
+with mlflow.start_run(run_name="Kidney_Disease_RandomForest_Model"):
+
+    # Pipeline
+    rf_pipe = Pipeline([
+        ('transformer', processor),
+        ('rf_model', RandomForestClassifier())
+    ])
+
+    # Train model
+    rf_pipe.fit(x_train, y_train)
+
+    # Predictions
+    rf_predict = rf_pipe.predict(x_test)
+
+    # Evaluation
+    f1 = f1_score(y_test, rf_predict)
+
+    print("Classification Report")
+    print(classification_report(y_test, rf_predict))
+    print()
+    print(f"F1_Score : {f1}")
+
+    # Manual metric logging
+    mlflow.log_metric("f1_score", f1)
+
+    # Log model
+    mlflow.sklearn.log_model(
+        sk_model=rf_pipe,
+        artifact_path="random_forest_pipeline"
+    )
+
+
+
+Classification Report
+              precision    recall  f1-score   support
+
+           0       0.81      0.75      0.78        28
+           1       0.75      0.81      0.78        26
+
+    accuracy                           0.78        54
+   macro avg       0.78      0.78      0.78        54
+weighted avg       0.78      0.78      0.78        54
+
+
+F1_Score : 0.7777777777777778
+
+
+
+
+
+mlflow.sklearn.autolog()
+
+with mlflow.start_run(run_name="Kidney_Disease_XGBoost_Model"):
+
+    # Define model
+    xgb_model = XGBClassifier(
+        n_estimators=300,
+        learning_rate=0.05,
+        max_depth=6,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        random_state=42,
+        eval_metric='logloss'
+    )
+
+    # Create pipeline
+    xgb_pipe = Pipeline([
+        ('transformer', processor),
+        ('xgb_model', xgb_model)
+    ])
+
+    # Train model
+    xgb_pipe.fit(x_train, y_train)
+
+    # Predictions
+    xgb_predict = xgb_pipe.predict(x_test)
+
+    # Evaluation
+    f1 = f1_score(y_test, xgb_predict)
+
+    print("Classification Report")
+    print(classification_report(y_test, xgb_predict))
+    print()
+    print("Confusion Matrix:")
+    print(confusion_matrix(y_test,xgb_predict))
+    print()      
+    print(f"F1_Score : {f1}")
+
+    # Log metrics manually
+    mlflow.log_metric("f1_score", f1)
+
+    # Log parameters manually
+    mlflow.log_param("n_estimators", 300)
+    mlflow.log_param("learning_rate", 0.05)
+    mlflow.log_param("max_depth", 6)
+
+    # Log model
+    mlflow.sklearn.log_model(
+        sk_model=xgb_pipe,
+        artifact_path="xgboost_pipeline"
+    )
+
+
+
+
+
+Classification Report
+              precision    recall  f1-score   support
+
+           0       0.86      0.64      0.73        28
+           1       0.70      0.88      0.78        26
+
+    accuracy                           0.76        54
+   macro avg       0.78      0.76      0.76        54
+weighted avg       0.78      0.76      0.76        54
+
+
+Confusion Matrix:
+[[18 10]
+ [ 3 23]]
+
+F1_Score : 0.7796610169491526
+
+
+
+
+
+# Get feature names from the transformer
+feature_names = xgb_pipe.named_steps['transformer'].get_feature_names_out()
+
+importance_df = pd.DataFrame(
+    {
+        "features": feature_names,
+        "importance": (xgb_pipe.named_steps['xgb_model'].feature_importances_ * 100).round(2)
+    }
+)
+
+
+
+top_features = importance_df.sort_values(by='importance', ascending=False).head(25)
+
+plt.figure(figsize=(10, 7))
+
+sns.barplot(
+    data=top_features,
+    x='importance',
+    y = 'features',
+    orient='h')
+
+plt.xlabel("Importance Score")
+plt.ylabel("Features")
+plt.title("Top 25 Important Features - XGBoost")
+
+plt.show()
+
+
+
+
+# Probability predictions
+y_probs = xgb_pipe.predict_proba(x_test)[:, 1]
+
+# ROC metrics
+fpr, tpr, thresholds = roc_curve(y_test, y_probs)
+
+# AUC score
+auc_score = roc_auc_score(y_test, y_probs)
+
+print(f"AUC Score: {auc_score}")
+
+
+plt.figure(figsize=(8,6))
+
+plt.plot(fpr, tpr, label=f"AUC = {auc_score:.3f}")
+
+plt.plot([0,1], [0,1], linestyle='--')
+
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("ROC Curve - XGBoost")
+
+plt.legend()
+
+plt.show()
+
+
+# Probability predictions
+y_probs = xgb_pipe.predict_proba(x_test)[:, 1]
+
+# ROC metrics
+fpr, tpr, thresholds = roc_curve(y_test, y_probs)
+
+# AUC score
+auc_score = roc_auc_score(y_test, y_probs)
+
+print(f"AUC Score: {auc_score}")
+
+
+
+# Extract transformer
+transformer = xgb_pipe.named_steps['transformer']
+
+# Extract trained xgboost model
+xgb_model = xgb_pipe.named_steps['xgb_model']
+
+# Transform test data
+x_test_transformed = transformer.transform(x_test)
+
+# Get transformed feature names
+feature_names = transformer.get_feature_names_out()
+
+# Create SHAP explainer
+explainer = shap.Explainer(xgb_model)
+
+# Generate SHAP values
+shap_values = explainer(x_test_transformed)
+
+# Average SHAP importance across all rows
+mean_shap_values = np.abs(
+    shap_values.values
+).mean(axis=0)
+
+# Create dataframe
+shap_importance_df = pd.DataFrame({
+    'Feature': feature_names,
+    'SHAP Importance': mean_shap_values
+})
+
+# Sort descending
+shap_importance_df = shap_importance_df.sort_values(
+    by='SHAP Importance',
+    ascending=False
+)
+
+print(shap_importance_df.head(20))
+
+  Feature  SHAP Importance
+20              num__serumcreatinine         1.238909
+22                          num__gfr         0.776847
+43                      num__itching         0.372794
+5                           num__bmi         0.359119
+29             num__hemoglobinlevels         0.328165
+32               num__cholesterolhdl         0.327780
+16                   num__systolicbp         0.321267
+23               num__proteininurine         0.287784
+19                        num__hba1c         0.281441
+21                    num__bunlevels         0.273826
+30             num__cholesteroltotal         0.262218
+48     num__medicalcheckupsfrequency         0.250609
+42                 num__musclecramps         0.246347
+18            num__fastingbloodsugar         0.239395
+7            num__alcoholconsumption         0.195457
+44           num__qualityoflifescore         0.190278
+10                 num__sleepquality         0.170125
+8              num__physicalactivity         0.145967
+28  num__serumelectrolytesphosphorus         0.139481
+27     num__serumelectrolytescalcium         0.133492
+
+
+
+shap_values.feature_names = feature_names
+
+shap.summary_plot(shap_values)
+
+shap_values.feature_names = feature_names
+
+shap.summary_plot(shap_values)
+
+
+
+
+
+
+
+
+
